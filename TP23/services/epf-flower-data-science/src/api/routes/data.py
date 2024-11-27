@@ -1,8 +1,13 @@
-import pandas as pd
 import os
+import json
+import pandas as pd
 from fastapi import APIRouter
 from kaggle.api.kaggle_api_extended import KaggleApi
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+import joblib
+from typing import List
+
 
 
 router = APIRouter()
@@ -97,5 +102,67 @@ def split_dataset():
         y_test.to_csv("src/data/y_test.csv", index=False)
         
         return {"message": "Dataset split successfully and saved in src/data directory."}
+    except Exception as e:
+        return {"error": str(e)}
+
+# Step 11: Train the Classification Model 
+@router.post("/model/train")
+def train_model():
+    """
+    Train a classification model using the preprocessed dataset.
+    Save the trained model to src/models.
+    """
+    try:
+        train_path = "src/data/train.csv"
+        y_train_path = "src/data/y_train.csv"
+        params_path = "src/config/model_parameters.json"
+        model_path = "src/models/random_forest_model.pkl"
+
+        if not os.path.exists(train_path) or not os.path.exists(y_train_path):
+            return {"error": "Training data not found. Please split the dataset first."}
+
+        X_train = pd.read_csv(train_path)
+        y_train = pd.read_csv(y_train_path).squeeze()  # Convert to Series
+
+        if 'Id' in X_train.columns:
+            X_train = X_train.drop(columns=['Id'])
+
+        with open(params_path, "r") as f:
+            params = json.load(f)
+
+        model = RandomForestClassifier(**params)
+        model.fit(X_train, y_train)
+
+        os.makedirs("src/models", exist_ok=True)
+        joblib.dump(model, model_path)
+
+        return {"message": f"Model trained and saved at {model_path}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+ # Step 12: Prediction with Trained Model
+@router.post("/model/predict")
+def predict(data: List[dict]):
+    """
+    Make predictions using the trained model.
+    Input: JSON data as a list of dictionaries with feature values.
+    Output: Predictions as JSON.
+    """
+    try:
+        # Path to the trained model
+        model_path = "src/models/random_forest_model.pkl"
+        if not os.path.exists(model_path):
+            return {"error": "Trained model not found. Please train the model first."}
+
+        # Load the trained model
+        model = joblib.load(model_path)
+
+        # Convert input to DataFrame
+        X_input = pd.DataFrame(data)
+
+        # Make predictions
+        predictions = model.predict(X_input)
+
+        return {"predictions": predictions.tolist()}
     except Exception as e:
         return {"error": str(e)}
