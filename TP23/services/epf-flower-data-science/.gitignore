@@ -1,0 +1,9 @@
+# Ignore Python bytecode files
+*.pyc
+__pycache__/
+
+# Ignore dataset zip files
+*.zip
+
+# Ignore SQLite database files
+*.sqlite
