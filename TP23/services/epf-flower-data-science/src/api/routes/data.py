@@ -1,9 +1,14 @@
-import pandas as pd
 import os
+import json
+import pandas as pd
 from fastapi import APIRouter
 from kaggle.api.kaggle_api_extended import KaggleApi
+from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 import joblib
+from typing import List
+
+
 
 router = APIRouter()
 
@@ -48,36 +53,116 @@ def load_dataset():
         return df.to_dict(orient="records")
     except Exception as e:
         return {"error": str(e)}
+    
+
+# Step 8: Processing the Dataset
+@router.get("/data/preprocess")
+def preprocess_dataset():
+    """
+    Preprocess the dataset by encoding categorical variables
+    and saving the processed data to src/data/iris_processed.csv.
+    """
+    file_path = "src/data/iris.csv"
+    processed_path = "src/data/iris_processed.csv"
+    
+    if not os.path.exists(file_path):
+        return {"error": "Dataset not found. Please download it first."}
+    
+    try:
+        df = pd.read_csv(file_path)
+        df['Species'] = df['Species'].astype('category').cat.codes
+        df.to_csv(processed_path, index=False)
+        return {"message": f"Dataset preprocessed and saved to {processed_path}"}
+    except Exception as e:
+        return {"error": str(e)}
 
 
-# Step 11: Train the Model
-@router.post("/model/train", tags=["Model Training"])
+# Step 9: Split in train and test
+@router.get("/data/split")
+def split_dataset():
+    """
+    Split the preprocessed dataset into training and testing sets.
+    Save the splits to src/data/train.csv and src/data/test.csv.
+    """
+    processed_path = "src/data/iris_processed.csv"
+    if not os.path.exists(processed_path):
+        return {"error": "Processed dataset not found. Please preprocess it first."}
+    
+    try:
+        df = pd.read_csv(processed_path)
+        
+        X = df.drop(columns=["Species"])
+        y = df["Species"]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        X_train.to_csv("src/data/train.csv", index=False)
+        X_test.to_csv("src/data/test.csv", index=False)
+        y_train.to_csv("src/data/y_train.csv", index=False)
+        y_test.to_csv("src/data/y_test.csv", index=False)
+        
+        return {"message": "Dataset split successfully and saved in src/data directory."}
+    except Exception as e:
+        return {"error": str(e)}
+
+# Step 12: Prediction with Trained Model
+@router.post("/model/train")
 def train_model():
     """
     Train a classification model using the preprocessed dataset.
-    Save the trained model in src/models.
+    Save the trained model to src/models.
     """
     try:
-        # Load the preprocessed dataset
-        processed_path = "src/data/iris_processed.csv"
-        if not os.path.exists(processed_path):
-            return {"error": "Processed dataset not found. Please preprocess it first."}
-        
-        df = pd.read_csv(processed_path)
-        X = df.drop(columns=["species"])
-        y = df["species"]
+        train_path = "src/data/train.csv"
+        y_train_path = "src/data/y_train.csv"
+        params_path = "src/config/model_parameters.json"
+        model_path = "src/models/random_forest_model.pkl"
 
-        # Load parameters
-        with open("src/config/model_parameters.json", "r") as f:
+        if not os.path.exists(train_path) or not os.path.exists(y_train_path):
+            return {"error": "Training data not found. Please split the dataset first."}
+
+        X_train = pd.read_csv(train_path)
+        y_train = pd.read_csv(y_train_path).squeeze()  # Convert to Series
+
+        if 'Id' in X_train.columns:
+            X_train = X_train.drop(columns=['Id'])
+
+        with open(params_path, "r") as f:
             params = json.load(f)
 
-        # Train the model
         model = RandomForestClassifier(**params)
-        model.fit(X, y)
+        model.fit(X_train, y_train)
 
-        # Save the trained model
-        model_path = "src/models/random_forest_model.pkl"
+        os.makedirs("src/models", exist_ok=True)
         joblib.dump(model, model_path)
+
         return {"message": f"Model trained and saved at {model_path}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+ # Step 12: Train the Classification Model
+@router.post("/model/predict")
+def predict(data: List[dict]):
+    """
+    Make predictions using the trained model.
+    Input: JSON data as a list of dictionaries with feature values.
+    Output: Predictions as JSON.
+    """
+    try:
+        # Path to the trained model
+        model_path = "src/models/random_forest_model.pkl"
+        if not os.path.exists(model_path):
+            return {"error": "Trained model not found. Please train the model first."}
+
+        # Load the trained model
+        model = joblib.load(model_path)
+
+        # Convert input to DataFrame
+        X_input = pd.DataFrame(data)
+
+        # Make predictions
+        predictions = model.predict(X_input)
+
+        return {"predictions": predictions.tolist()}
     except Exception as e:
         return {"error": str(e)}

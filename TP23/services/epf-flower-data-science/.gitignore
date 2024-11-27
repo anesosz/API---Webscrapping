@@ -15,3 +15,6 @@ train.csv
 test.csv
 y_train.csv
 y_test.csv
+
+# Ignore trained model files
+*.pkl
