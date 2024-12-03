@@ -108,7 +108,7 @@ def split_dataset():
     except Exception as e:
         return {"error": str(e)}
 
-# Step 12: Prediction with Trained Model
+# Step 11: Train the Classification Model 
 @router.post("/model/train")
 def train_model():
     """
