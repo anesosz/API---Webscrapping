@@ -90,6 +90,9 @@ def split_dataset():
     
     try:
         df = pd.read_csv(processed_path)
+
+        if 'Id' in df.columns:
+            df = df.drop(columns=['Id'])
         
         X = df.drop(columns=["Species"])
         y = df["Species"]
@@ -105,7 +108,7 @@ def split_dataset():
     except Exception as e:
         return {"error": str(e)}
 
-# Step 11: Train the Classification Model 
+# Step 12: Prediction with Trained Model
 @router.post("/model/train")
 def train_model():
     """
@@ -122,10 +125,7 @@ def train_model():
             return {"error": "Training data not found. Please split the dataset first."}
 
         X_train = pd.read_csv(train_path)
-        y_train = pd.read_csv(y_train_path).squeeze()  # Convert to Series
-
-        if 'Id' in X_train.columns:
-            X_train = X_train.drop(columns=['Id'])
+        y_train = pd.read_csv(y_train_path).squeeze()  
 
         with open(params_path, "r") as f:
             params = json.load(f)
@@ -145,24 +145,31 @@ def train_model():
 def predict(data: List[dict]):
     """
     Make predictions using the trained model.
-    Input: JSON data as a list of dictionaries with feature values.
+    Input: JSON data as a list of validated features.
     Output: Predictions as JSON.
     """
     try:
-        # Path to the trained model
         model_path = "src/models/random_forest_model.pkl"
         if not os.path.exists(model_path):
             return {"error": "Trained model not found. Please train the model first."}
 
-        # Load the trained model
         model = joblib.load(model_path)
 
-        # Convert input to DataFrame
         X_input = pd.DataFrame(data)
+        print("Input DataFrame:\n", X_input)
 
-        # Make predictions
         predictions = model.predict(X_input)
+        print("Predictions:", predictions)
+        print("Type of predictions:", type(predictions))
+        if hasattr(predictions, "dtype"):
+            print("Dtype of predictions:", predictions.dtype)
 
-        return {"predictions": predictions.tolist()}
+        reverse_species_mapping = {0: "Iris-setosa", 1: "Iris-versicolor", 2: "Iris-virginica"}
+        formatted_predictions = [
+            f"{pred} ({reverse_species_mapping[pred]})" for pred in predictions
+        ]
+        
+        return {"predictions": formatted_predictions}
+    
     except Exception as e:
         return {"error": str(e)}
