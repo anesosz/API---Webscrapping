@@ -19,5 +19,5 @@ y_test.csv
 # Ignore trained model files
 *.pkl
 
-# Ignore the key.json file
-firestore_key.json
+# Ignore key.json file
+src/config/firestore_key.json
