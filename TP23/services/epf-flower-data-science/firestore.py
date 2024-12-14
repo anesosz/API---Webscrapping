@@ -28,3 +28,11 @@ class FirestoreClient:
         raise FileExistsError(
             f"No document found at {collection_name} with the id {document_id}"
         )
+
+    def create(self, collection_name: str, document_id: str, data: dict) -> None:
+        """Create a new document."""
+        self.client.collection(collection_name).document(document_id).set(data)
+
+    def update(self, collection_name: str, document_id: str, updates: dict) -> None:
+        """Update an existing document."""
+        self.client.collection(collection_name).document(document_id).update(updates)
