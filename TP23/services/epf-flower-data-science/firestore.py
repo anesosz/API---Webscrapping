@@ -1,5 +1,7 @@
-import google.auth
+import os
 from google.cloud import firestore
+from google.oauth2 import service_account
+
 
 
 class FirestoreClient:
@@ -9,7 +11,11 @@ class FirestoreClient:
 
     def __init__(self) -> None:
         """Init the client."""
-        credentials, _ = google.auth.default()
+        # Path to the service account key
+        key_path = os.getenv("FIRESTORE_KEY_PATH", "src/config/firestore_key.json")
+        
+        # Load credentials from the JSON file
+        credentials = service_account.Credentials.from_service_account_file(key_path)
 
         self.client = firestore.Client(credentials=credentials)
 
