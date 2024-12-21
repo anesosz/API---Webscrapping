@@ -92,22 +92,6 @@ def list_users(email: str = Depends(validate_token)):
     return {"users": user_list}
 
 
-@router.post("/logout")
-def logout_user(token: str = Depends(validate_token)):
-    """
-    Log out the user by invalidating their token.    
-    Args:
-        token (str): The token of the user.    
-    Returns:
-        dict: A success message.
-    """
-    if token in invalidated_tokens:
-        raise HTTPException(status_code=400, detail="User already logged out.")
-    invalidated_tokens.append(token)
-
-    return {"message": "User logged out successfully."}
-
-
 # Step 18: Protection against Denial of Service (DoS) attacks
 @router.get("/limited")
 def limited_endpoint(user_id: str = Query(..., description="The unique user ID")):
@@ -122,3 +106,19 @@ def limited_endpoint(user_id: str = Query(..., description="The unique user ID")
     """
     rate_limit(user_id)
     return {"message": "You are within the rate limit."}
+
+
+@router.post("/logout")
+def logout_user(token: str = Depends(validate_token)):
+    """
+    Log out the user by invalidating their token.    
+    Args:
+        token (str): The token of the user.    
+    Returns:
+        dict: A success message.
+    """
+    if token in invalidated_tokens:
+        raise HTTPException(status_code=400, detail="User already logged out.")
+    invalidated_tokens.append(token)
+
+    return {"message": "User logged out successfully."}
