@@ -1,12 +1,37 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from src.api.router import router
+from src.api.router import router_v1
 
 
 app = FastAPI()
 
+@app.exception_handler(StarletteHTTPException)
+async def custom_404_handler(request: Request, exc: StarletteHTTPException):
+    """
+    Custom handler for 404 errors.
 
+    Args:
+        request (Request): The incoming HTTP request.
+        exc (StarletteHTTPException): The exception instance.
+
+    Returns:
+        JSONResponse: A meaningful error message.
+    """
+    if exc.status_code == 404:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": "Resource not found",
+                "detail": f"The URL {request.url.path} does not exist."
+            },
+        )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
 
 def get_application() -> FastAPI:
     application = FastAPI(
@@ -24,7 +49,7 @@ def get_application() -> FastAPI:
         allow_headers=["*"],
     )
 
-    application.include_router(router)
+    application.include_router(router_v1)
     return application
 
 

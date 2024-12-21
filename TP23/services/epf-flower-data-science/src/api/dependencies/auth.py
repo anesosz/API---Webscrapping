@@ -1,5 +1,7 @@
 from fastapi import HTTPException, Depends
 from firestore import FirestoreClient
+from datetime import datetime
+
 
 firestore_client = FirestoreClient()
 
@@ -73,3 +75,32 @@ def get_current_admin(token: str = Depends(validate_token)):
     if user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Not enough permissions.")
     return email
+
+
+rate_limit_data = {}
+
+def rate_limit(user_id: str, limit: int = 10, interval: int = 60):
+    """
+    Implements rate limiting using a Python dictionary.
+
+    Args:
+        user_id (str): The unique identifier of the user.
+        limit (int): The maximum number of allowed requests within the interval.
+        interval (int): The time window in seconds for the rate limit.
+
+    Raises:
+        HTTPException: If the user exceeds the rate limit.
+    """
+    now = datetime.now()
+    
+    if user_id in rate_limit_data:
+        request_times = rate_limit_data[user_id]
+        
+        rate_limit_data[user_id] = [t for t in request_times if (now - t).seconds < interval]
+
+        if len(rate_limit_data[user_id]) >= limit:
+            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        else:
+            rate_limit_data[user_id].append(now)
+    else:
+        rate_limit_data[user_id] = [now]
