@@ -6,22 +6,6 @@ firestore_client = FirestoreClient()
 invalidated_tokens = []
 
 
-# def validate_token(token: str):
-#     """
-#     Validate the Bearer Token.
-#     Args:
-#         token (str): The Bearer Token from the Authorization header.
-#     Returns:
-#         str: The email address of the authenticated user.
-#     Raises:
-#         HTTPException: If the token is invalid.
-#     """
-#     if token in invalidated_tokens:
-#         raise HTTPException(status_code=401, detail="Token has been invalidated.")
-#     if not token.startswith("token-for-"):
-#         raise HTTPException(status_code=401, detail="Invalid token format.")
-#     return token.replace("token-for-", "")
-
 def validate_token(token: str):
     print(f"Received token in validate_token: {token}")  # Debugging
     if token in invalidated_tokens:
