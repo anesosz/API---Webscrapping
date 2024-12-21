@@ -1,10 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from google.cloud import firestore
 from passlib.context import CryptContext
 from firestore import FirestoreClient
 from src.schemas.user import User
 from src.api.dependencies.auth import validate_token
-
+from src.api.dependencies.auth import rate_limit
 
 
 router = APIRouter()
@@ -79,14 +79,14 @@ def list_users(email: str = Depends(validate_token)):
     Returns:
         dict: A list of all users in the Firestore database.
     """
-    print(f"Email after validation: {email}")  # Debugging
+    print(f"Email after validation: {email}") 
 
-    # Fetch the user from Firestore
+    
     user = firestore_client.get("users", email)
     if not user or user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Not enough permissions. Admin role required")
 
-    # List all users in Firestore
+    
     users = firestore_client.list_all_documents("users")
     user_list = [{"id": doc.id, "data": doc.to_dict()} for doc in users]
     return {"users": user_list}
@@ -104,4 +104,21 @@ def logout_user(token: str = Depends(validate_token)):
     if token in invalidated_tokens:
         raise HTTPException(status_code=400, detail="User already logged out.")
     invalidated_tokens.append(token)
+
     return {"message": "User logged out successfully."}
+
+
+# Step 18: Protection against Denial of Service (DoS) attacks
+@router.get("/limited")
+def limited_endpoint(user_id: str = Query(..., description="The unique user ID")):
+    """
+    Endpoint with rate limiting applied.
+
+    Args:
+        user_id (str): The unique identifier of the user (passed as a query parameter).
+
+    Returns:
+        dict: A success message if the user is within the rate limit.
+    """
+    rate_limit(user_id)
+    return {"message": "You are within the rate limit."}

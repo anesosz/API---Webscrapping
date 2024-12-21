@@ -1,11 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from starlette.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from src.api.router import router
+from src.api.router import router_v1
 
 
 app = FastAPI()
-
 
 
 def get_application() -> FastAPI:
@@ -24,7 +23,7 @@ def get_application() -> FastAPI:
         allow_headers=["*"],
     )
 
-    application.include_router(router)
+    application.include_router(router_v1)
     return application
 
 
